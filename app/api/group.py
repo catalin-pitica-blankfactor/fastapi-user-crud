@@ -44,7 +44,7 @@ async def get_group_by_id(
     try:
         return group_service.get_group_by_id(db, group_id)
     except KeyError as e:
-        raise HTTPException(status_code=404, detail=e.args[0]
+        raise HTTPException(status_code=404, detail=e.args[0])
 
 @router.put("/group/{group_id}", response_model=GroupResponseForCreate)
 async def update_group(
