@@ -1,37 +1,32 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, create_autospec, patch
 from sqlalchemy.orm import Session
+from app.repository.group_repository import GroupRepository
+from app.model.group_model import Group
 
 
 class TestGroupRepository(TestCase):
 
-    db: Session
-
-    mock_group1 = MagicMock()
-    mock_group1.uuid = "be2a91c4-df99-490d-9061-bc12f50a80b7"
-    mock_group1.name = "regular"
-
-    mock_group2 = MagicMock()
-    mock_group2.uuid = "b34d63a3-12fd-456e-b6d7-27c8ab69a6e3"
-    mock_group2.name = "admin"
-
     def setUp(self):
-
-        from app.repository.group_repository import GroupRepository
-        from app.model.group_model import Group
 
         self.db = create_autospec(Session)
         self.Group = Group
-        self.groupRepository = GroupRepository()
+        self.groupRepository = GroupRepository(self.db)
+
+        self.mock_group1 = MagicMock()
+        self.mock_group1.uuid = "be2a91c4-df99-490d-9061-bc12f50a80b7"
+        self.mock_group1.name = "regular"
+
+        self.mock_group2 = MagicMock()
+        self.mock_group2.uuid = "b34d63a3-12fd-456e-b6d7-27c8ab69a6e3"
+        self.mock_group2.name = "admin"
 
     def test_get_group_by_id(self):
 
         mock_query = self.db.query.return_value
         mock_query.filter.return_value.first.return_value = self.mock_group1
 
-        retrieved_group = self.groupRepository.get_group_by_id(
-            self.db, self.mock_group1.uuid
-        )
+        retrieved_group = self.groupRepository.get_group_by_id(self.mock_group1.uuid)
 
         self.db.query.assert_called_once_with(self.Group)
         self.assertEqual(retrieved_group, self.mock_group1)
@@ -42,7 +37,7 @@ class TestGroupRepository(TestCase):
         mock_query = self.db.query.return_value
         mock_query.all.return_value = mock_group
 
-        retrieved_groups = self.groupRepository.get_all_groups(self.db)
+        retrieved_groups = self.groupRepository.get_all_groups()
 
         self.db.query.assert_called_once_with(self.Group)
         self.assertEqual(len(retrieved_groups), len(mock_group))
@@ -55,7 +50,7 @@ class TestGroupRepository(TestCase):
         mock_query.filter.return_value.first.return_value = self.mock_group1
 
         retrieved_group = self.groupRepository.check_exist_group_name(
-            self.db, self.mock_group1.name
+            self.mock_group1.name
         )
 
         self.db.query.assert_called_once_with(self.Group)
@@ -66,7 +61,7 @@ class TestGroupRepository(TestCase):
 
         new_group_name = "regular"
 
-        created_group = self.groupRepository.create_group(self.db, new_group_name)
+        created_group = self.groupRepository.create_group(new_group_name)
 
         self.db.add.assert_called_once()
         self.db.commit.assert_called_once()
@@ -84,7 +79,7 @@ class TestGroupRepository(TestCase):
         )
 
         updated_group = self.groupRepository.update_group(
-            self.db, self.mock_group1.uuid, updated_group_name
+            self.mock_group1.uuid, updated_group_name
         )
 
         self.mock_group1.name = updated_group_name
@@ -102,7 +97,7 @@ class TestGroupRepository(TestCase):
         mock_query = self.db.query.return_value
         mock_query.filter.return_value.first.return_value = self.mock_group1
 
-        self.groupRepository.delete_group_by_id(self.db, self.mock_group1.uuid)
+        self.groupRepository.delete_group_by_id(self.mock_group1.uuid)
 
         self.db.query.assert_called_once_with(self.Group)
         self.db.delete.assert_called_once_with(self.mock_group1)

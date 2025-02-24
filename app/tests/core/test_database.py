@@ -1,18 +1,24 @@
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
+
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 
 
 class TestGetDbFunction(TestCase):
 
-    @patch("app.core.database.SessionLocal")
-    def test_get_db(self, MockSessionLocal):
+    def test_get_db(self):
 
-        mock_session = MockSessionLocal.return_value
+        db = None
+        for db in get_db():
 
-        db_session = next(get_db())
+            self.assertIsInstance(db, Session)
 
-        MockSessionLocal.assert_called_once()
-        self.assertEqual(db_session, mock_session)
+            self.assertTrue(db.is_active)
 
-        mock_session.close.assert_called_once()
+            break
+
+        self.assertIsNotNone(db)
+        with self.assertRaises(Exception):
+            db.execute(text("SELECT *"))

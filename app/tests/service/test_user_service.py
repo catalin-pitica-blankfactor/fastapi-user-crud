@@ -8,17 +8,13 @@ from app.model import User, Group
 
 class TestUserService(TestCase):
 
-    db: Session
-
-    @patch("app.service.user_service.UserRepository")
-    def setUp(self, MockUserRepository):
+    def setUp(self):
 
         from app.service.user_service import UserService
 
         self.db = create_autospec(Session)
-        self.mock_user_repository = MockUserRepository.return_value
-        self.UserService = UserService()
-        self.UserService.user_repository = self.mock_user_repository
+        self.mock_user_repository = MagicMock()
+        self.UserService = UserService(self.mock_user_repository)
         self.mock_background_task = MagicMock(spec=BackgroundTasks)
 
         self.mock_user1 = MagicMock(spec=User)
@@ -42,10 +38,10 @@ class TestUserService(TestCase):
     def test_get_user_by_id(self):
         self.mock_user_repository.get_user_by_id.return_value = self.mock_user1
 
-        response = self.UserService.get_user_by_id(self.db, self.mock_user1.uuid)
+        response = self.UserService.get_user_by_id(self.mock_user1.uuid)
 
         self.mock_user_repository.get_user_by_id.assert_called_once_with(
-            self.db, self.mock_user1.uuid
+            self.mock_user1.uuid
         )
 
         expected_response = {
@@ -62,10 +58,10 @@ class TestUserService(TestCase):
         non_existing_user_id = "non-existing-uuid"
 
         with self.assertRaises(KeyError) as context:
-            self.UserService.get_user_by_id(self.db, non_existing_user_id)
+            self.UserService.get_user_by_id(non_existing_user_id)
 
         self.mock_user_repository.get_user_by_id.assert_called_once_with(
-            self.db, non_existing_user_id
+            non_existing_user_id
         )
         self.assertEqual(
             str(context.exception.args[0]),
@@ -77,9 +73,9 @@ class TestUserService(TestCase):
         mock_users = [self.mock_user1, self.mock_user2]
         self.mock_user_repository.get_all_users.return_value = mock_users
 
-        response = self.UserService.get_all_users(self.db)
+        response = self.UserService.get_all_users()
 
-        self.mock_user_repository.get_all_users.assert_called_once_with(self.db)
+        self.mock_user_repository.get_all_users.assert_called_once_with()
 
         expected_response = [
             {
@@ -102,17 +98,17 @@ class TestUserService(TestCase):
         self.mock_user_repository.get_all_users.return_value = None
 
         with self.assertRaises(ValueError) as context:
-            self.UserService.get_all_users(self.db)
+            self.UserService.get_all_users()
 
-        self.mock_user_repository.get_all_users.assert_called_once_with(self.db)
+        self.mock_user_repository.get_all_users.assert_called_once_with()
         self.assertEqual(str(context.exception.args[0]), f"No user in the database")
 
     def test_check_user_validation_success(self):
 
         self.mock_user_repository.get_user_by_id.return_value = self.mock_user1
-        result = self.UserService.check_user_validation(self.db, self.mock_user1.uuid)
+        result = self.UserService.check_user_validation(self.mock_user1.uuid)
         self.mock_user_repository.get_user_by_id.assert_called_once_with(
-            self.db, self.mock_user1.uuid
+            self.mock_user1.uuid
         )
         self.assertEqual(result, self.mock_user1)
 
@@ -121,10 +117,10 @@ class TestUserService(TestCase):
         self.mock_user_repository.get_user_by_id.return_value = None
 
         with self.assertRaises(KeyError) as context:
-            self.UserService.check_user_validation(self.db, "non-existing-uuid")
+            self.UserService.check_user_validation("non-existing-uuid")
 
         self.mock_user_repository.get_user_by_id.assert_called_once_with(
-            self.db, "non-existing-uuid"
+            "non-existing-uuid"
         )
         self.assertEqual(
             context.exception.args[0], "User with id non-existing-uuid does not exist"
@@ -132,17 +128,13 @@ class TestUserService(TestCase):
 
     def test_check_group_in_user_success(self):
 
-        self.UserService.check_group_in_user(
-            self.db, self.mock_user1, self.mock_group.name
-        )
+        self.UserService.check_group_in_user(self.mock_user1, self.mock_group.name)
         self.assertTrue(True)
 
     def test_check_group_in_user_fails(self):
 
         with self.assertRaises(ValueError) as context:
-            self.UserService.check_group_in_user(
-                self.db, self.mock_user1, "non-existing-group"
-            )
+            self.UserService.check_group_in_user(self.mock_user1, "non-existing-group")
 
         self.assertEqual(
             context.exception.args[0],
@@ -155,11 +147,9 @@ class TestUserService(TestCase):
         self.mock_user1.name = updated_name
         self.mock_user_repository.update_user.return_value = self.mock_user1
 
-        response = self.UserService.update_user(
-            self.db, self.mock_user1.uuid, updated_name
-        )
+        response = self.UserService.update_user(self.mock_user1.uuid, updated_name)
         self.mock_user_repository.update_user.assert_called_once_with(
-            self.db, self.mock_user1.uuid, updated_name
+            self.mock_user1.uuid, updated_name
         )
 
         expected_response = {
@@ -175,7 +165,7 @@ class TestUserService(TestCase):
 
         self.mock_user_repository.delete_user.return_value = None
 
-        result = self.UserService.delete_user_by_id(self.db, self.mock_user1.uuid)
+        result = self.UserService.delete_user_by_id(self.mock_user1.uuid)
 
         self.assertIsNone(result)
 
@@ -194,7 +184,7 @@ class TestUserService(TestCase):
 
         async def run_test():
             await self.UserService.process_content(
-                self.mock_user1.uuid, self.db, "https://api.github.com/{user}"
+                self.mock_user1.uuid, "https://api.github.com/{user}"
             )
 
         asyncio.run(run_test())
@@ -205,7 +195,7 @@ class TestUserService(TestCase):
         )
 
         self.mock_user_repository.update_user_url.assert_called_once_with(
-            self.db, self.mock_user1.uuid, replace_placeholder
+            self.mock_user1.uuid, replace_placeholder
         )
 
     def test_add_new_user_success(self):
@@ -214,22 +204,20 @@ class TestUserService(TestCase):
         self.mock_user_repository.create_user.return_value = self.mock_user1
 
         response = self.UserService.add_new_user(
-            self.db,
             self.mock_user1.name,
             self.mock_group.name,
             self.mock_background_task,
         )
 
         self.mock_user_repository.get_user_by_name.assert_called_once_with(
-            self.db, self.mock_user1.name
+            self.mock_user1.name
         )
         self.mock_user_repository.create_user.assert_called_once_with(
-            self.db, self.mock_user1.name, self.mock_group.name
+            self.mock_user1.name, self.mock_group.name
         )
         self.mock_background_task.add_task.assert_called_once_with(
             self.UserService.process_content,
             user_id=self.mock_user1.uuid,
-            db=self.db,
             url="https://api.github.com/",
         )
         self.assertEqual(response, self.mock_user1)
@@ -240,7 +228,6 @@ class TestUserService(TestCase):
 
         with self.assertRaises(ValueError) as context:
             self.UserService.add_new_user(
-                self.db,
                 self.mock_user1.name,
                 self.mock_group.name,
                 self.mock_background_task,
@@ -251,6 +238,6 @@ class TestUserService(TestCase):
             f"User with name: {self.mock_user1.name} already exist in the database",
         )
         self.mock_user_repository.get_user_by_name.assert_called_once_with(
-            self.db, self.mock_user1.name
+            self.mock_user1.name
         )
         self.mock_background_task.add_task.assert_not_called()

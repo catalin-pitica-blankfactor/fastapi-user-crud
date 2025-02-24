@@ -1,7 +1,5 @@
 from unittest import TestCase
-from unittest.mock import MagicMock, create_autospec
-from sqlalchemy.orm import Session
-from app.core.database import get_db
+from unittest.mock import patch
 from app.main import app
 from fastapi.testclient import TestClient
 from app.service.group_service import GroupService
@@ -11,15 +9,8 @@ client = TestClient(app)
 
 
 class TestGroupAPI(TestCase):
-    db: Session
 
     def setUp(self):
-
-        self.db = create_autospec(Session)
-        self.mock_group_service = MagicMock(spec=GroupService)
-
-        app.dependency_overrides[GroupService] = lambda: self.mock_group_service
-        app.dependency_overrides[get_db] = lambda: self.db
 
         self.group1 = {
             "uuid": "be2a91c4-df99-490d-9061-bc12f50a80b7",
@@ -31,206 +22,233 @@ class TestGroupAPI(TestCase):
             "name": "admin",
         }
 
-    def tearDown(self):
+    @patch.object(GroupService, "check_existing_group_name")
+    @patch.object(GroupService, "add_new_group")
+    def test_create_group(self, mock_add_new_group, mock_check_existing_group_name):
 
-        app.dependency_overrides = {}
-
-    def test_create_group(self):
-
-        self.mock_group_service.add_new_group.return_value = self.group1
-        self.mock_group_service.check_existing_group_name.return_value = None
+        mock_check_existing_group_name.return_value = None
+        mock_add_new_group.return_value = self.group1
 
         response = client.post("/group", json={"name": "regular"})
 
         self.assertEqual(response.status_code, 200)
+
         self.assertEqual(response.json(), {"uuid": self.group1["uuid"]})
-        self.mock_group_service.check_existing_group_name.assert_called_once_with(
-            self.db, "regular"
-        )
-        self.mock_group_service.add_new_group.assert_called_once_with(
-            self.db, "regular"
-        )
 
-    def test_create_group_value_error_when_group_name_already_exists(self):
+        mock_check_existing_group_name.assert_called_once_with("regular")
+        mock_add_new_group.assert_called_once_with("regular")
 
-        self.mock_group_service.check_existing_group_name.side_effect = ValueError(
-            "Group name already exists"
+    @patch.object(GroupService, "check_existing_group_name")
+    @patch.object(GroupService, "add_new_group")
+    def test_create_group_already_exist(
+        self, mock_add_new_group, mock_check_existing_group_name
+    ):
+
+        mock_check_existing_group_name.side_effect = KeyError(
+            "Group name already exist"
         )
 
         response = client.post("/group", json={"name": "duplicate-group"})
 
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json(), {"detail": "Group name already exists"})
-        self.mock_group_service.check_existing_group_name.assert_called_once_with(
-            self.db, "duplicate-group"
-        )
-
-        self.mock_group_service.add_new_group.assert_not_called()
-
-        print(
-            "Mock Calls to check_existing_group_name:",
-            self.mock_group_service.check_existing_group_name.mock_calls,
-        )
-        print(
-            "Mock Calls to add_new_group:",
-            self.mock_group_service.add_new_group.mock_calls,
-        )
-
-    def test_create_group_already_exist(self):
-
-        self.mock_group_service.check_existing_group_name.side_effect = KeyError(
-            "Group already exists"
-        )
-
-        response = client.post("/group", json={"name": "regular"})
-
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json(), {"detail": "Group already exists"})
 
-        self.mock_group_service.check_existing_group_name.assert_called_once_with(
-            self.db, "regular"
+        self.assertEqual(response.json(), {"detail": "Group name already exist"})
+
+        mock_check_existing_group_name.assert_called_once_with("duplicate-group")
+        mock_add_new_group.assert_not_called()
+
+    @patch.object(GroupService, "check_existing_group_name")
+    @patch.object(GroupService, "add_new_group")
+    def test_create_group_value_error_when_add_wrong_group_name(
+        self, mock_add_new_group, mock_check_existing_group_name
+    ):
+
+        mock_add_new_group.side_effect = ValueError(
+            "Group name must be regular or admin"
         )
-        self.mock_group_service.add_new_group.assert_not_called()
 
-    def test_get_all_groups_success(self):
+        response = client.post("/group", json={"name": "test"})
 
-        self.mock_group_service.get_all_groups.return_value = [self.group1, self.group2]
+        self.assertEqual(response.status_code, 400)
+
+        self.assertEqual(
+            response.json(), {"detail": "Group name must be regular or admin"}
+        )
+
+        mock_add_new_group.assert_called_once_with("test")
+        mock_check_existing_group_name.assert_called_once_with("test")
+
+    @patch.object(GroupService, "get_all_groups")
+    def test_get_all_groups_success(self, mock_get_all_groups):
+
+        mock_get_all_groups.return_value = [
+            {"uuid": "be2a91c4-df99-490d-9061-bc12f50a80b7", "name": "regular"},
+            {"uuid": "b34d63a3-12fd-456e-b6d7-27c8ab69a6e3", "name": "admin"},
+        ]
 
         response = client.get("/group")
 
         self.assertEqual(response.status_code, 200)
 
-        expected_response = [
-            {"uuid": "be2a91c4-df99-490d-9061-bc12f50a80b7", "name": "regular"},
-            {"uuid": "b34d63a3-12fd-456e-b6d7-27c8ab69a6e3", "name": "admin"},
-        ]
-        self.assertEqual(response.json(), expected_response)
-        self.mock_group_service.get_all_groups.assert_called_once()
+        self.assertEqual(response.json(), [self.group1, self.group2])
 
-    def test_get_all_groups_no_groups(self):
+        mock_get_all_groups.assert_called_once()
 
-        self.mock_group_service.get_all_groups.side_effect = ValueError(
-            "No group found"
-        )
+    @patch.object(
+        GroupService,
+        "get_all_groups",
+    )
+    def test_get_all_groups_no_groups(self, mock_get_all_groups):
+
+        mock_get_all_groups.side_effect = ValueError("No group found")
 
         response = client.get("/group")
 
         self.assertEqual(response.status_code, 400)
+
         self.assertEqual(response.json(), {"detail": "No group found"})
 
-        self.mock_group_service.get_all_groups.assert_called_once_with(self.db)
+        mock_get_all_groups.assert_called_once()
 
-    def test_get_group_by_id(self):
+    @patch.object(GroupService, "get_group_by_id")
+    def test_get_group_by_id(self, mock_get_group_by_id):
 
-        self.mock_group_service.get_group_by_id.return_value = self.group1
+        mock_get_group_by_id.return_value = self.group1
 
         response = client.get(f"/group/{self.group1['uuid']}")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), self.group1)
-        self.mock_group_service.get_group_by_id.assert_called_once_with(
-            self.db, self.group1["uuid"]
-        )
+        mock_get_group_by_id.assert_called_once_with(self.group1["uuid"])
 
-    def test_get_group_by_id_not_found(self):
+    @patch.object(GroupService, "get_group_by_id")
+    def test_get_group_by_id_not_found(self, mock_get_group_by_id):
 
-        self.mock_group_service.get_group_by_id.side_effect = KeyError(
-            "Group not found"
-        )
+        mock_get_group_by_id.side_effect = KeyError("Group not found")
 
         response = client.get("/group/non-existing-id")
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json(), {"detail": "Group not found"})
 
-        self.mock_group_service.get_group_by_id.assert_called_once_with(
-            self.db, "non-existing-id"
-        )
+        mock_get_group_by_id.assert_called_once_with("non-existing-id")
 
-    def test_update_group(self):
+    @patch.object(GroupService, "update_group")
+    @patch.object(GroupService, "get_group_by_id")
+    @patch.object(GroupService, "check_existing_group_name")
+    def test_update_group(
+        self, mock_check_existing_group_name, mock_get_group_by_id, mock_update_group
+    ):
 
         updated_group = {"uuid": self.group1["uuid"], "name": "updated-regular"}
-        self.mock_group_service.get_group_by_id.return_value = self.group1
-        self.mock_group_service.update_group.return_value = updated_group
-
+        mock_get_group_by_id.return_value = self.group1
+        mock_update_group.return_value = updated_group
+        mock_check_existing_group_name.return_value = None
         response = client.put(
             f"/group/{self.group1['uuid']}", json={"name": "updated-regular"}
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"uuid": updated_group["uuid"]})
-        self.mock_group_service.get_group_by_id.assert_called_once_with(
-            self.db, self.group1["uuid"]
-        )
-        self.mock_group_service.update_group.assert_called_once_with(
-            self.db, self.group1["uuid"], "updated-regular"
-        )
-
-    def test_update_group_raises_value_error_when_group_name_already_exists(self):
-
-        group_id = "1234-abcd"
-        updated_name = "new-group-name"
-        self.mock_group_service.get_group_by_id.return_value = {
-            "uuid": group_id,
-            "name": "old-group-name",
-        }
-        self.mock_group_service.check_existing_group_name.side_effect = ValueError(
-            "Group name already exists"
+        mock_get_group_by_id.assert_called_once_with(self.group1["uuid"])
+        mock_check_existing_group_name.assert_called_once_with(updated_group["name"])
+        mock_update_group.assert_called_once_with(
+            self.group1["uuid"], "updated-regular"
         )
 
-        response = client.put(f"/group/{group_id}", json={"name": updated_name})
+    @patch.object(GroupService, "update_group")
+    @patch.object(GroupService, "get_group_by_id")
+    @patch.object(GroupService, "check_existing_group_name")
+    def test_update_group_raises_value_error_when_group_name_already_exists(
+        self, mock_check_existing_group_name, mock_get_group_by_id, mock_update_group
+    ):
 
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json(), {"detail": "Group name already exists"})
-        self.mock_group_service.get_group_by_id.assert_called_once_with(
-            self.db, group_id
-        )
-        self.mock_group_service.check_existing_group_name.assert_called_once_with(
-            self.db, updated_name
+        updated_group = {"uuid": self.group1["uuid"], "name": "updated-regular"}
+        mock_get_group_by_id.return_value = updated_group
+        mock_check_existing_group_name.side_effect = KeyError(
+            "Group name already exist"
         )
 
-    def test_update_group_not_found(self):
-
-        self.mock_group_service.get_group_by_id.side_effect = KeyError(
-            "Group not found"
+        response = client.put(
+            f"/group/{updated_group['uuid']}", json={"name": "updated-regular"}
         )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {"detail": "Group name already exist"})
+        mock_get_group_by_id.assert_called_once_with(self.group1["uuid"])
+        mock_check_existing_group_name.assert_called_once_with(updated_group["name"])
+        mock_update_group.assert_not_called()
+
+    @patch.object(GroupService, "update_group")
+    @patch.object(GroupService, "get_group_by_id")
+    @patch.object(GroupService, "check_existing_group_name")
+    def test_update_group_not_found(
+        self, mock_check_existing_group_name, mock_get_group_by_id, mock_update_group
+    ):
+
+        mock_get_group_by_id.side_effect = KeyError("group with id not found")
 
         response = client.put(
             f"/group/{self.group1['uuid']}", json={"name": "updated-regular"}
         )
 
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json(), {"detail": "Group not found"})
-        self.mock_group_service.get_group_by_id.assert_called_once_with(
-            self.db, self.group1["uuid"]
+        self.assertEqual(response.json(), {"detail": "group with id not found"})
+        mock_get_group_by_id.assert_called_once_with(self.group1["uuid"])
+        mock_update_group.assert_not_called()
+        mock_check_existing_group_name.assert_not_called()
+
+    @patch.object(GroupService, "update_group")
+    @patch.object(GroupService, "get_group_by_id")
+    @patch.object(GroupService, "check_existing_group_name")
+    def test_update_group_when_wring_group_name(
+        self, mock_check_existing_group_name, mock_get_group_by_id, mock_update_group
+    ):
+
+        mock_check_existing_group_name.return_value = None
+        mock_get_group_by_id.return_value = None
+        mock_update_group.side_effect = ValueError(
+            "Group name must be regular or admin"
         )
 
-    def test_delete_group_by_id(self):
+        response = client.put(
+            f"/group/{self.group1['uuid']}", json={"name": "updated-test"}
+        )
 
-        self.mock_group_service.get_group_by_id.return_value = self.group1
-        self.mock_group_service.delete_group_by_id.return_value = None
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json(), {"detail": "Group name must be regular or admin"}
+        )
+
+        mock_check_existing_group_name.assert_called_once()
+        mock_get_group_by_id.assert_called_once()
+        mock_update_group.assert_called_once()
+
+    @patch.object(GroupService, "get_group_by_id")
+    @patch.object(GroupService, "delete_group_by_id")
+    def test_delete_group_by_id(self, mock_delete_group_by_id, mock_get_group_by_id):
+
+        mock_get_group_by_id.return_value = self.group1
+        mock_delete_group_by_id.return_value = None
 
         response = client.delete(f"/group/{self.group1['uuid']}")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), None)
-        self.mock_group_service.get_group_by_id.assert_called_once_with(
-            self.db, self.group1["uuid"]
-        )
-        self.mock_group_service.delete_group_by_id.assert_called_once_with(
-            self.db, self.group1["uuid"]
-        )
+        mock_get_group_by_id.assert_called_once_with(self.group1["uuid"])
+        mock_delete_group_by_id.assert_called_once_with(self.group1["uuid"])
 
-    def test_delete_group_by_id_not_found(self):
+    @patch.object(GroupService, "get_group_by_id")
+    @patch.object(GroupService, "delete_group_by_id")
+    def test_delete_group_by_id_not_found(
+        self, mock_delete_group_by_id, mock_get_group_by_id
+    ):
 
-        self.mock_group_service.get_group_by_id.side_effect = KeyError(
-            "Group not found"
-        )
+        mock_get_group_by_id.side_effect = KeyError("Group not found")
 
-        response = client.delete("/group/non-existing-uuid")
+        response = client.delete(f"/group/{self.group1['uuid']}")
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json(), {"detail": "Group not found"})
-        self.mock_group_service.get_group_by_id.assert_called_once_with(
-            self.db, "non-existing-uuid"
-        )
+        mock_get_group_by_id.assert_called_once_with(self.group1["uuid"])
+        mock_delete_group_by_id.assert_not_called()
