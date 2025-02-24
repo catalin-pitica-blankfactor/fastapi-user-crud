@@ -11,31 +11,30 @@ class TestUserRepository(TestCase):
     def setUp(self):
 
         self.db = create_autospec(Session)
-        self.User = User
-        self.Group = Group
         self.userRepository = UserRepository(self.db)
 
-        self.mock_user1 = MagicMock()
-        self.mock_user1.uuid = "510a0b32-d4e5-40bb-bc6e-a7ddbd2cacb3"
-        self.mock_user1.name = "catalin"
-        self.mock_user1.url = {
-            "current_user_url": "https://api.github.com/user",
-            "hub_url": "https://api.github.com/hub",
-        }
-        self.mock_user1.group = "be2a91c4-df99-490d-9061-bc12f50a80b7"
+        self.mock_group = Group(
+            uuid="be2a91c4-df99-490d-9061-bc12f50a80b7", name="regular"
+        )
+        self.mock_user1 = User(
+            uuid="510a0b32-d4e5-40bb-bc6e-a7ddbd2cacb3",
+            name="catalin",
+            urls={
+                "current_user_url": "https://api.github.com/user",
+                "hub_url": "https://api.github.com/hub",
+            },
+            group=[self.mock_group],
+        )
 
-        self.mock_user2 = MagicMock()
-        self.mock_user2.uuid = "d9bc8265-8abc-406c-aee2-2a3584431d5e"
-        self.mock_user2.name = "iulia"
-        self.mock_user2.url = {
-            "current_user_url": "https://api.github.com/user",
-            "hub_url": "https://api.github.com/hub",
-        }
-        self.mock_user2.group = "be2a91c4-df99-490d-9061-bc12f50a80b7"
-
-        self.mock_group = MagicMock()
-        self.mock_group.uuid = "be2a91c4-df99-490d-9061-bc12f50a80b7"
-        self.mock_group.name = "regular"
+        self.mock_user2 = User(
+            uuid="d9bc8265-8abc-406c-aee2-2a3584431d5e",
+            name="iulia",
+            urls={
+                "current_user_url": "https://api.github.com/user",
+                "hub_url": "https://api.github.com/hub",
+            },
+            group=[self.mock_group],
+        )
 
     def test_get_user_by_id(self):
 
@@ -46,7 +45,7 @@ class TestUserRepository(TestCase):
             "510a0b32-d4e5-40bb-bc6e-a7ddbd2cacb3"
         )
 
-        self.db.query.assert_called_once_with(self.User)
+        self.db.query.assert_called_once_with(User)
         self.assertEqual(retrieved_user, self.mock_user1)
 
     def test_get_user_by_name(self):
@@ -56,7 +55,7 @@ class TestUserRepository(TestCase):
 
         retrieved_user = self.userRepository.get_user_by_name("catalin")
 
-        self.db.query.assert_called_once_with(self.User)
+        self.db.query.assert_called_once_with(User)
         self.assertEqual(retrieved_user, self.mock_user1)
 
     def test_get_all_users(self):
@@ -71,10 +70,8 @@ class TestUserRepository(TestCase):
         for i in range(len(mock_users)):
             self.assertEqual(retrieved_users[i].uuid, mock_users[i].uuid)
             self.assertEqual(retrieved_users[i].name, mock_users[i].name)
-            self.assertEqual(retrieved_users[i].url, mock_users[i].url)
-            self.assertEqual(
-                retrieved_users[i].group, "be2a91c4-df99-490d-9061-bc12f50a80b7"
-            )
+            self.assertEqual(retrieved_users[i].urls, mock_users[i].urls)
+            self.assertEqual(retrieved_users[i].group, mock_users[i].group)
 
     @patch("uuid.uuid4", return_value="510a0b32-d4e5-40bb-bc6e-a7ddbd2cacb3")
     def test_create_user(self, mock_uuid):
@@ -86,12 +83,10 @@ class TestUserRepository(TestCase):
             "catalin", "be2a91c4-df99-490d-9061-bc12f50a80b7"
         )
 
-        self.db.query.assert_called_once_with(self.Group)
+        self.db.query.assert_called_once_with(Group)
 
         filter_call_args = self.db.query.return_value.filter.call_args[0]
-        self.assertEqual(
-            str(filter_call_args[0]), str(self.Group.uuid == mock_group.uuid)
-        )
+        self.assertEqual(str(filter_call_args[0]), str(Group.uuid == mock_group.uuid))
 
         self.assertEqual(created_user.uuid, self.mock_user1.uuid)
         self.assertEqual(created_user.name, self.mock_user1.name)
@@ -112,12 +107,12 @@ class TestUserRepository(TestCase):
 
         self.userRepository.update_user_url(self.mock_user1.uuid, updated_content)
 
-        self.db.query.assert_called_once_with(self.User)
+        self.db.query.assert_called_once_with(User)
 
         filter_call_args = self.db.query.return_value.filter.call_args[0]
 
         self.assertEqual(
-            str(filter_call_args[0]), str(self.User.uuid == self.mock_user1.uuid)
+            str(filter_call_args[0]), str(User.uuid == self.mock_user1.uuid)
         )
 
         self.assertEqual(self.mock_user1.urls, updated_content)
@@ -139,7 +134,7 @@ class TestUserRepository(TestCase):
 
         self.mock_user1.name = new_user_name
         self.db.query.return_value.filter.return_value.update.assert_called_once_with(
-            {self.User.name: new_user_name}
+            {User.name: new_user_name}
         )
 
         self.db.commit.assert_called_once()
@@ -158,7 +153,7 @@ class TestUserRepository(TestCase):
         filter_call_args = self.db.query.return_value.filter.call_args[0]
 
         self.assertEqual(
-            str(filter_call_args[0]), str(self.User.uuid == self.mock_user1.uuid)
+            str(filter_call_args[0]), str(User.uuid == self.mock_user1.uuid)
         )
 
         self.db.delete.assert_called_once_with(self.mock_user1)
