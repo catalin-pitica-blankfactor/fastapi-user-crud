@@ -1,0 +1,25 @@
+TEST_CONTAINER=fastapi-test
+VOLUME=$(PWD):/app:Z
+
+build:
+	podman build -f Dockerfile.test -t $(TEST_CONTAINER) .
+
+run: build
+	podman run --rm --name $(TEST_CONTAINER) -v $(VOLUME) $(TEST_CONTAINER)
+
+format: build
+	podman run --rm -v $(VOLUME) $(TEST_CONTAINER) isort --check-only .
+	podman run --rm -v $(VOLUME) $(TEST_CONTAINER) black --check .
+
+lint: build
+	podman run --rm -v $(VOLUME) $(TEST_CONTAINER) pylint app/
+	podman run --rm -v $(VOLUME) $(TEST_CONTAINER) flake8 app/
+
+typecheck: build
+	podman run --rm -v $(VOLUME) $(TEST_CONTAINER) mypy app/
+
+test: build
+	podman run --rm -v $(VOLUME) $(TEST_CONTAINER) \
+		coverage run --data-file=/app/.coverage -m unittest discover -s app/tests/
+	podman run --rm -v $(VOLUME) $(TEST_CONTAINER) \
+		coverage report --data-file=/app/.coverage -m
