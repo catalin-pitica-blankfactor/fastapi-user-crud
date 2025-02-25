@@ -1,7 +1,7 @@
 APP_CONTAINER=fastapi-app
 APP_IMAGE=fastapi-image
 DB_VOLUME=fastapi-db
-ALEMBIC = python3 -m alembic -c generator.ini
+ALEMBIC = python3 -m alembic -c migrations.ini
 
 build:
 	podman build -t $(APP_IMAGE) -f Dockerfile .
@@ -23,10 +23,10 @@ clean: stop
 restart: clean run
 
 init-db:
-	$(ALEMBIC) init app/generator
+	$(ALEMBIC) init app/migrations
 
 migration:
-	$(ALEMBIC) revision --autogenerate -m "generator"
+	$(ALEMBIC) revision --autogenerate -m "migrations"
 
 upgrade-db:
 	$(ALEMBIC) upgrade head
