@@ -10,8 +10,6 @@ from app.model.group_model import Group
 from app.model.user_group import UserGroup
 from app.model.user_model import User
 
-
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
