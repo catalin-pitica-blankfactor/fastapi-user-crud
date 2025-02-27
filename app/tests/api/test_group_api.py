@@ -1,9 +1,10 @@
 from unittest import TestCase
 from unittest.mock import patch
-from app.main import app
-from fastapi.testclient import TestClient
-from app.service.group_service import GroupService
 
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.service.group_service import GroupService
 
 client = TestClient(app)
 

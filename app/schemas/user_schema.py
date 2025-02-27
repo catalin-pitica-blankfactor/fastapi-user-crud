@@ -26,4 +26,3 @@ class UserResponseForGet(BaseModel):
 
     class Config:
         from_attributes = True
-

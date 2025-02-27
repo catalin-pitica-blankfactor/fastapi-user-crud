@@ -1,8 +1,10 @@
 import json
 from typing import Annotated
-from fastapi import BackgroundTasks, Depends
-from app.model.user_model import User
+
 import httpx
+from fastapi import BackgroundTasks, Depends
+
+from app.model.user_model import User
 from app.repository.user_repository import UserRepository
 
 

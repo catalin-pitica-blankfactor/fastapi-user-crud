@@ -1,10 +1,8 @@
-from fastapi import HTTPException, APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends
-from app.schemas.group_schema import (
-    GroupCreate,
-    GroupResponseForCreate,
-    GroupResponseForGet,
-)
+
+from app.schemas.group_schema import (GroupCreate, GroupResponseForCreate,
+                                      GroupResponseForGet)
 from app.service.group_service import GroupService
 
 router = APIRouter()

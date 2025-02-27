@@ -6,6 +6,8 @@ COPY requirements-tests.txt /app/
 
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements-tests.txt && pip install --no-cache-dir mypy isort black flake8 pylint coverage
 
+RUN pip install psycopg2-binary
+
 VOLUME ["/app", "/app/data"]
 
 CMD ["coverage", "run", "-m", "unittest", "discover", "-s", "app/tests"]

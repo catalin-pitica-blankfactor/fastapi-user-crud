@@ -1,13 +1,10 @@
-from fastapi import Depends, HTTPException, BackgroundTasks, APIRouter
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import ValidationError
+
+from app.schemas.user_schema import (UserCreate, UserResponse,
+                                     UserResponseForGet, UserUpdate)
 from app.service.group_service import GroupService
 from app.service.user_service import UserService
-from app.schemas.user_schema import (
-    UserCreate,
-    UserResponse,
-    UserResponseForGet,
-    UserUpdate,
-)
 
 router = APIRouter()
 

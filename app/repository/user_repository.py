@@ -1,13 +1,13 @@
+import json
+import uuid
 from typing import Annotated
 
 from fastapi import Depends
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
-from app.model.user_model import User
 from app.model.group_model import Group
-import uuid
-import json
+from app.model.user_model import User
 
 
 class UserRepository:

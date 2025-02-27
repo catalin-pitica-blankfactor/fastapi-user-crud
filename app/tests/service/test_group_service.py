@@ -1,8 +1,10 @@
 import unittest
-from unittest.mock import MagicMock, patch, create_autospec
+from unittest.mock import MagicMock, create_autospec, patch
+
 from sqlalchemy.orm import Session
-from app.service.group_service import GroupService
+
 from app.model import Group
+from app.service.group_service import GroupService
 
 
 class TestGroupService(unittest.TestCase):
