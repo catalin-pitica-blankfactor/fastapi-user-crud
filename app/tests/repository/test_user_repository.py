@@ -1,9 +1,11 @@
 from unittest import TestCase
-from unittest.mock import create_autospec, patch, MagicMock
+from unittest.mock import MagicMock, create_autospec, patch
+
 from sqlalchemy.orm import Session
-from app.repository.user_repository import UserRepository
-from app.model.user_model import User
+
 from app.model.group_model import Group
+from app.model.user_model import User
+from app.repository.user_repository import UserRepository
 
 
 class TestUserRepository(TestCase):

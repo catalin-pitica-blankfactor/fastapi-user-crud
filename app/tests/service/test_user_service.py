@@ -1,9 +1,11 @@
 import asyncio
 from unittest import TestCase
-from unittest.mock import MagicMock, patch, create_autospec, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
+
 from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
-from app.model import User, Group
+
+from app.model import Group, User
 
 
 class TestUserService(TestCase):

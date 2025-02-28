@@ -1,7 +1,9 @@
 from unittest import TestCase
 from unittest.mock import patch
-from pydantic import ValidationError
+
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
+
 from app.main import app
 from app.schemas.user_schema import UserResponseForGet
 from app.service.group_service import GroupService

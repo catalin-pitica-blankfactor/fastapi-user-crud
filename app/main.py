@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+
 from app.api import group, user
 
 app = FastAPI()

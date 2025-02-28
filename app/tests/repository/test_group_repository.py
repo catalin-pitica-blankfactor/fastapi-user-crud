@@ -1,8 +1,10 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, create_autospec, patch
+
 from sqlalchemy.orm import Session
-from app.repository.group_repository import GroupRepository
+
 from app.model.group_model import Group
+from app.repository.group_repository import GroupRepository
 
 
 class TestGroupRepository(TestCase):
