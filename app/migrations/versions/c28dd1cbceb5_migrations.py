@@ -1,8 +1,8 @@
 """migrations
 
-Revision ID: 787817f16cd3
+Revision ID: c28dd1cbceb5
 Revises: 
-Create Date: 2025-02-26 23:31:16.546655
+Create Date: 2025-02-28 13:43:25.549886
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '787817f16cd3'
+revision: str = 'c28dd1cbceb5'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -34,6 +34,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('uuid')
     )
     op.create_index(op.f('ix_user_name'), 'user', ['name'], unique=False)
+    op.create_index(op.f('ix_user_urls'), 'user', ['urls'], unique=False)
     op.create_index(op.f('ix_user_uuid'), 'user', ['uuid'], unique=False)
     op.create_table('user_group',
     sa.Column('user_uuid', sa.String(), nullable=False),

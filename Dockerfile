@@ -2,10 +2,13 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-COPY requirements.txt /app/requirements.txt
+COPY requirements.txt requirements-tests.txt /app/
 
 RUN pip install --no-cache-dir --upgrade pip && \
-    if [ -s /app/requirements.txt ]; then pip install --no-cache-dir -r /app/requirements.txt; fi
+    pip install --no-cache-dir -r /app/requirements.txt && \
+    pip install --no-cache-dir -r /app/requirements-tests.txt && \
+    pip install --no-cache-dir mypy isort black flake8 pylint coverage
+
 
 copy . /app/
 
@@ -13,4 +16,4 @@ VOLUME ["/app", "/app/data"]
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

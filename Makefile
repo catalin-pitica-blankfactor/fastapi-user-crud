@@ -20,6 +20,23 @@ clean: stop
 	podman rmi $(APP_IMAGE)
 	podman volume rm $(DB_VOLUME)
 
+format:
+	podman exec $(APP_CONTAINER) isort --check-only .
+	podman exec $(APP_CONTAINER) black --check .
+
+lint:
+	podman exec $(APP_CONTAINER) pylint app/
+	podman exec $(APP_CONTAINER) flake8 app/
+
+typecheck:
+	podman exec $(APP_CONTAINER) mypy app/
+
+test:
+	podman exec $(APP_CONTAINER) \
+		coverage run --data-file=/app/.coverage -m unittest discover -s app/tests/
+	podman exec $(APP_CONTAINER) \
+		coverage report --data-file=/app/.coverage -m
+
 restart: clean run
 
 init-db:

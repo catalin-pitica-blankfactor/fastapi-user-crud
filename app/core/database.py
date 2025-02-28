@@ -6,7 +6,7 @@ from app.core.config import get_sqlalchemy_db_url
 
 SQLALCHEMY_DB_URL = get_sqlalchemy_db_url()
 
-engine = create_engine(SQLALCHEMY_DB_URL)
+engine = create_engine(SQLALCHEMY_DB_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
